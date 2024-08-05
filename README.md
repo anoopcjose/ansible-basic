@@ -7,6 +7,9 @@ $ sudo apt update
 $ sudo apt install software-properties-common
 $ sudo add-apt-repository --yes --update ppa:ansible/ansible
 $ sudo apt install ansible
+$ ansible --version
+$ sudo apt install python3-pip  {{ if pip is not installed }} 
+$ pip3 install ansible-lint
 ```
 
 ### Output for reference

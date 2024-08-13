@@ -84,6 +84,22 @@ $ pip3 install ansible-lint
 Successfully installed ansible-compat-24.7.0 ansible-lint-24.7.0 attrs-24.1.0 black-24.8.0 bracex-2.5 click-8.1.7 filelock-3.15.4 jsonschema-4.23.0 jsonschema-specifications-2023.12.1 markdown-it-py-3.0.0 mdurl-0.1.2 mypy-extensions-1.0.0 packaging-24.1 pathspec-0.12.1 platformdirs-4.2.2 pygments-2.18.0 referencing-0.35.1 rich-13.7.1 rpds-py-0.19.1 ruamel.yaml-0.18.6 ruamel.yaml.clib-0.2.8 subprocess-tee-0.4.2 tomli-2.0.1 typing-extensions-4.12.2 wcmatch-9.0 yamllint-1.35.1
 ```
 
+#### Error / Warning
+
+```
+  WARNING: The script pygmentize is installed in '/home/ubuntu/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+```
+
+```
+$ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+
+$ source ~/.bashrc 
+
+$ echo $PATH
+/home/ubuntu/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+```
+
 Reference: 
 
 [1.] https://docs.ansible.com/ansible/latest/installation_guide/installation_distros.html#installing-ansible-on-ubuntu

@@ -1,0 +1,10 @@
+DevOps101 — First Steps on Terraform: Terraform + OpenStack + Ansible
+https://medium.com/hackernoon/terraform-openstack-ansible-d680ea466e22
+
+Deploying an OpenStack Instance with Terraform
+https://elatov.github.io/2018/09/deploying-an-openstack-instance-with-terraform
+
+
+https://www.edureka.co/community/74444/how-to-launch-an-instance-in-openstack-using-terraform
+
+https://computingforgeeks.com/deploy-vm-instance-on-openstack-with-terraform

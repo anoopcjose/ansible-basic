@@ -1,0 +1,36 @@
+https://www.cloudbees.com/blog/ansible-lineinfile-9-ways-to-use-it-to-improve-your-playbooks
+
+---
+- name: Lineinfile Examples
+  hosts: localhost
+  tasks:
+    - name: Place line
+      lineinfile:
+        line: Hello World
+        path: hello.txt
+        create: true
+
+    - name: Remove line
+      lineinfile:
+        line: Hello World
+        path: hello.txt
+        state: absent
+
+
+    - name: Change SSH daemon configuration
+      lineinfile:
+        line: PermitEmptyPasswords no
+        regexp: ^PermitEmptyPasswords
+        path: /etc/ssh/sshd_config
+
+    - name: Change SSH daemon configuration
+      lineinfile:
+        line: "{{ item.line }}"
+        regexp: "{{ item.regexp }}"
+        path: /etc/ssh/sshd_config
+      loop:
+        - line: GatewayPorts no
+          regexp: ^GatewayPorts
+        - line: X11Forwarding yes
+          regexp: ^X11Forwarding
+

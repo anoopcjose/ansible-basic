@@ -1,0 +1,201 @@
+---
+- name: "Install Wordpress in Different User Environments Amazon Linux - Apache and Ubuntu - Nginx"
+  hosts: all
+  become: true
+  vars_files:
+    - application.vars
+
+  vars_prompt:
+    - name: wp_database
+      prompt: Enter the Wordpress Database Name
+      private: false
+
+    - name: wp_user
+      prompt: Enter the Wordpress Database Username
+      private: false
+
+    - name: wp_password
+      prompt: Enter the Wordpress Database Password
+      private: false
+
+  tasks:
+
+    - name: "Ubuntu:  Installing Packages"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      apt:
+        name: "{{ ubuntu_packages }}"
+        state: present
+        update_cache: true
+      register: package_status
+
+    - name: "Ubuntu:  Creating Virtual Host Config file from template"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      template:
+        src: nginx.reshmamjoby.in.tmpl
+        dest: "/etc/nginx/sites-available/{{ httpd_domain }}.conf"
+        owner: "{{ nginx_owner }}"
+        group: "{{ nginx_group }}"
+      register: vhosts_status
+
+    - name: "Ubuntu:  Create symlink to WordPress site {{ httpd_domain }}"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      file:
+        src: "/etc/nginx/sites-available/{{ httpd_domain }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ httpd_domain }}.conf"
+        state: link
+        owner: "{{ nginx_owner }}"
+        group: "{{ nginx_group }}"
+
+    - name: "Ubuntu:  Remove default site"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      ignore_errors: true
+      file:
+        path: "/etc/nginx/sites-enabled/default"
+        state: absent
+
+    - name: "Ubuntu:  Create Document Root /var/www/html/{{ httpd_domain }}/"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      file:
+        path: /var/www/html/{{ httpd_domain }}/
+        state: directory
+        owner: "{{ nginx_owner }}"
+        group: "{{ nginx_group }}"
+
+    - name: "WordPress:  Copying WordPress files"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      copy:
+        src: "./wordpress/"
+        dest: "/var/www/html/{{ httpd_domain }}/"
+        owner: "{{ nginx_owner }}"
+        group: "{{ nginx_group }}"
+
+    - name: "Ubuntu - Mariadb-Server Restart/Enabling Service"
+      service:
+        name: mariadb
+        state: restarted
+        enabled: true
+      tags:
+        - mariadb
+
+    - name: "Amazon Linux - Copy MariaDB configuration file"
+      template:
+        src: my.cnf
+        dest: "/root/.my.cnf"
+        mode: 0600
+        owner: root
+        group: root
+      tags:
+        - mariadb
+
+    - name: "Removing Anonymous User"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      mysql_user:
+        user: ""
+        host_all: true
+        state: absent
+
+    - name: "Removing Test Database"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      mysql_db:
+        name: "test"
+        state: absent
+
+    - name: "Creating WordPress Database"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      mysql_db:
+        name: "{{ wp_database }}"
+        state: present
+
+    - name: "Creating WordPress user and grant privileges"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      mysql_user:
+        user: "{{ wp_user }}"
+        host: "%"
+        password: "{{ wp_password }}"
+        priv: '{{ wp_database }}.*:ALL'
+        state: present
+      register: database_status
+
+    - name: "Restarting/Enabling nginx or mariadb service"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu" and package_status.changed == true or vhosts_status == true or database_status == true
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: true
+      with_items: "{{ services }}"
+
+    - name: "Wordpress - Downloading wordpress archive file"
+      get_url:
+        url: "{{ wp_url }}"
+        dest: /tmp/wordpress.tar.gz
+      tags:
+        - wordpress
+
+    - name: "Wordpress - Extrating Wordpress archive"
+      unarchive:
+        src: /tmp/wordpress.tar.gz
+        dest: /tmp/
+        remote_src: true
+      tags:
+        - wordpress
+
+    - name: "Wordpress - Copying files to documentroot /var/www/html/{{ httpd_domain }}"
+      copy:
+        src: /tmp/wordpress/
+        dest: "/var/www/html/{{ httpd_domain }}"
+        owner: "{{ ubuntu_owner }}"
+        group: "{{ ubuntu_group }}"
+        remote_src: true
+      tags:
+        - wordpress
+
+    - name: "Wordpress - Creating wp-config.php from template"
+      template:
+        src: wp-config.php.tmpl
+        dest: "/var/www/html/{{ httpd_domain }}/wp-config.php"
+        owner: "{{ ubuntu_owner }}"
+        group: "{{ ubuntu_group }}"
+      tags:
+        - wordpress
+
+    - name: "Post-installation restart"
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: true
+      with_items:
+        - "mariadb"
+        - "nginx"
+        - "php-fpm"
+      tags:
+        - lamp
+        - apache
+        - php
+        - mariadb
+
+    - name: "Post-Installation Cleanup"
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - "/tmp/wordpress.tar.gz"
+        - "/tmp/wordpress/"
+      tags:
+        - wordpress
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

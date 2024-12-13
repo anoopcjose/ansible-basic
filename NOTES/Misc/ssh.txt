@@ -1,0 +1,27 @@
+#!/bin/bash
+ 
+echo "ClientAliveInterval 60" >> /etc/ssh/sshd_config
+echo "LANG=en_US.utf-8" >> /etc/environment
+echo "LC_ALL=en_US.utf-8" >> /etc/environment
+sudo yum install sshd -y
+sudo service sshd restart
+
+#!/bin/bash
+ 
+echo "ClientAliveInterval 60" >> /etc/ssh/sshd_config
+echo "LANG=en_US.utf-8" >> /etc/environment
+echo "LC_ALL=en_US.utf-8" >> /etc/environment
+sudo apt install sshd -y
+sudo service sshd restart
+
+#!/bin/bash
+ 
+echo "ClientAliveInterval 60" >> /etc/ssh/sshd_config
+echo "LANG=en_US.utf-8" >> /etc/environment
+echo "LC_ALL=en_US.utf-8" >> /etc/environment
+sudo zypper refresh
+sudo zypper install --no-confirm openssh
+sudo systemctl start sshd
+sudo systemctl enable sshd
+
+sudo systemctl set-hostname drupal-opensuse

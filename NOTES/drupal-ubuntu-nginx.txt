@@ -1,0 +1,221 @@
+---
+- name: "Install Drupal in the Nginx-Ubuntu Server"
+  hosts: nginx
+  become: true
+  vars_files:
+    - drupal-install.vars
+  tasks:
+
+    - name: Update Cache in Ubuntu Linux.
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      apt:
+        update_cache: true
+
+    - name: "Installing Nginx Webserver"
+      apt:
+        name: "{{ ubuntu_packages }}"
+        state: present
+        update_cache: yes
+
+    - name: "Creating Virtual Host Config file from template"
+      template:
+        src: default.tmpl
+        dest: "/etc/nginx/sites-available/{{ nginx_domain }}.conf"
+        owner: "{{ ubuntu_httpd_user }}"
+        group: "{{ ubuntu_httpd_user }}"
+
+    - name: "Create symlink to {{ nginx_domain }}"
+      file:
+        src: "/etc/nginx/sites-available/{{ nginx_domain }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ nginx_domain }}.conf"
+        state: link
+        owner: "{{ ubuntu_httpd_user }}"
+        group: "{{ ubuntu_httpd_user }}"
+
+    - name: "Creating Document root for Virtual Host"
+      file:
+        path: /var/www/html/{{ nginx_domain }}/
+        state: directory
+        owner: "{{ ubuntu_httpd_user }}"
+        group: "{{ ubuntu_httpd_user }}"
+
+    - name: "Restarting/Enabling nginx service"
+      service:
+        name: nginx
+        state: restarted
+        enabled: true
+
+    - name: Update Cache in Ubuntu Linux.
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      apt:
+        update_cache: true
+
+    - name: "install software dependencies and mariadb signing key"
+      ignore_errors: true
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      shell: apt-key adv --fetch-keys 'https://mariadb.org/mariadb_release_signing_key.asc' 
+	  
+    - name: "install software dependencies and mariadb signing key"
+      ignore_errors: true
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      shell: add-apt-repository 'deb [arch=amd64,arm64,ppc64el] https://mirror.rackspace.com/mariadb/repo/10.5/ubuntu focal main' -y
+		  
+    - name: Update Cache in Ubuntu Linux.
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      apt:
+        update_cache: true
+
+    - name: download sources
+      get_url:
+	    url: {{ package_url }}
+		dest: /tmp/
+		remote_src: true
+
+    - name: "install libssl1"
+      ignore_errors: true
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      shell: dpkg -i /tmp/libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb
+
+    - name: "Installing MariaDB"
+      apt:
+        name: "{{ ubuntu_mariadb }}"
+        state: present
+        update_cache: yes
+
+    - name: "Restarting/Enabling  mariadb service"
+      service:
+        name: mariadb
+        state: started
+        enabled: true
+	  
+    - name: "Copy MariaDB configuration file"
+      template:
+        src: ./my.cnf
+        dest: "/root/.my.cnf"
+        mode: 0600
+        owner: root
+        group: root
+
+    - name: "Setting Root password"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      mysql_user:
+        check_implicit_admin: yes
+        config_file: /root/.my.cnf
+        host_all: true
+        user: "{{ admin_user }}"
+        password: "{{ admin_password }}"
+        login_unix_socket: /var/lib/mysql/mysql.sock
+
+    - name: "Restart/Enable mariadb service"
+      service:
+        name: mariadb
+        state: restarted
+        enabled: true
+      tags:
+        - mariadb
+
+    - name: "Removing Anonymous User"
+      mysql_user:
+        user: ""
+        host_all: true
+        state: absent
+
+    - name: "Removing Test Database"
+      mysql_db:
+        name: "test"
+        state: absent
+
+    - name: "install repo"
+      ignore_errors: true
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      shell: LC_ALL=C.UTF-8 add-apt-repository ppa:ondrej/php
+
+    - name: "Installing PHP8"
+      apt:
+        name: "{{ ubuntu_php }}"
+        state: present
+        update_cache: yes
+
+    - name: "Ubuntu: Restart nginx/php-fpm/mariadb configuration are valid"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: true
+      with_items:
+        - "{{ ubuntu_services }}"
+		
+    - name: "Ubuntu: Create a drupal database"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      mysql_db:
+        name: "{{ drupal_db }}"
+        state: present
+      tags:
+        - drupal
+
+    - name: "Ubuntu: create a drupal user"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      mysql_user:
+        user: "{{ drupal_user }}"
+        host: "%"
+        password: "{{ drupal_password }}"
+        priv: "{{ drupal_db }}.*:ALL"
+        state: present
+      register: database_status
+      tags:
+        - drupal
+
+    - name: "Ubuntu: Download Drupal"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      get_url:
+        url: "{{ drupal_url }}"
+        dest: /tmp/tar.gz
+      tags:
+        - drupal
+
+    - name: "Ubuntu: unzip drupal package"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      unarchive:
+        src: /tmp/tar.gz
+        dest: /tmp/
+        remote_src: true
+      tags:
+        - drupal
+
+    - name: "Ubuntu: Copy drupal file to Document root of {{ nginx_domain }}"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      copy:
+        src: /tmp/drupal-9.4.8/
+        dest: "/var/www/html/{{ nginx_domain }}"
+        owner: "{{ ubuntu_nginx_user }}"
+        group: "{{ ubuntu_nginx_user }}"
+        remote_src: true
+      tags:
+        - drupal
+
+    - name: "Ubuntu: Nginx Configuration check"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      shell: nginx -t
+      register: nginx_status
+      tags:
+        - lamp
+        - drupal
+
+    - name: "Ubuntu: Print Status check Output"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+      debug:
+        var: nginx_status
+      tags:
+        - lamp
+
+    - name: "Ubuntu: Restart nginx/php-fpm/mariadb configuration are valid"
+      when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu" and  nginx_status.changed == true or database_status == true
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: true
+      with_items:
+        - "{{ ubuntu_services }}"
+      tags:
+        - lamp
+        - drupal

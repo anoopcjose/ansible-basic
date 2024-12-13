@@ -1,0 +1,71 @@
+    - name: "Wordpress - Downloading wordpress archive file"
+      get_url:
+        url: "{{ wp_url }}"
+        dest: /tmp/wordpress.tar.gz
+      tags:
+        - wordpress
+
+    - name: "Wordpress - Extrating Wordpress archive"
+      unarchive:
+        src: /tmp/wordpress.tar.gz
+        dest: /tmp/
+        remote_src: true
+      tags:
+        - wordpress
+
+    - name: "Wordpress - Copying files to documentroot /var/www/html/{{ domain_name }}"
+      copy:
+        src: /tmp/wordpress/
+        dest: "/var/www/html/{{ domain_name }}"
+        owner: "{{ httpd_user }}"
+        group: "{{ httpd_user }}"
+        remote_src: true
+      tags:
+        - wordpress
+
+    - name: "Wordpress - Creating wp-config.php from template"
+      template:
+        src: wp-config.php.tmpl
+        dest: "/var/www/html/{{ domain_name }}/wp-config.php"
+        owner: "{{ httpd_user }}"
+        group: "{{ httpd_user }}"
+      tags:
+        - wordpress
+
+    - name: "Creating WordPress Database"
+      mysql_db:
+        name: "{{ wp_database }}"
+        state: present
+
+    - name: "Lamp - Mariadb-Server Creating Extra User {{ mysql_extra_user }} "
+      mysql_user:
+        user: "{{ wp_user }}"
+        host: "%"
+        password: "{{ wp_password }}"
+        priv: '{{ wp_database }}.*:ALL'
+        state: present
+
+    - name: "Post-installation restart"
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: true
+      with_items:
+        - "mariadb"
+        - "httpd"
+        - "php-fpm"
+      tags:
+        - lamp
+        - apache
+        - php
+        - mariadb
+
+    - name: "Post-Installation Cleanup"
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - "/tmp/wordpress.tar.gz"
+        - "/tmp/wordpress/"
+      tags:
+        - wordpress

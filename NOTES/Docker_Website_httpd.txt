@@ -1,0 +1,91 @@
+Step 1: Launch your VM on which you want to setup your web server. Then keep a record of it’s IP address , username, password or key in case of cloud. That’s all you have to do in that VM and leave it running.
+
+Note: Now all the steps are to be performed in Base OS where you have ansible tool.
+
+Step 2: Create an Inventory file anywhere with any name. Inventory file contains all information of remote machines where you want to perform your operation. In my case i have created in etc directory.
+
+$ cat hosts
+[docker]
+3.109.157.14 ansible_user="ec2-user" ansible_port=22 ansible_ssh_private_key_file="ssh.pem"
+
+
+Step 5: You can check your connectivity to manger node by below command
+
+ansible -i hosts docker -m ping
+
+If it is not pingable. Then you may have connectivity issues.
+
+Step 6: Now you have to create a ansible playbook which contains all commands. You can create it anywhere with anyname but extension must be yaml or yml.
+Then you have to enter commands for setting up web server.
+
+Step 7: Now below will be steps for code completion. Below is the order you should follow while creating playbook to avoid any error.
+
+Create yum repository for docker
+Installing Docker from our repolist
+Installing Python for using docker remote API
+Installing docker-py python library using pip to run docker commands remotely
+start docker service
+copy html code from controller node to managed node
+In the end creating docker container with httpd image, exposing port, mounting our volume
+
+Step 8: Now run below command to run your playbook
+
+ansible-playbook </path/to/your/playbbok/file>
+
+After complete process, you can access your code from manged node IP along with exposed port and your file name.
+
+---
+- name: "Docker Container Deployment Playbook"
+  hosts: docker
+  become: true
+
+  tasks:
+    - name: "Yum repolist for Docker"
+      yum_repository:
+        name: docker
+        description: yum repository for docker
+        baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
+        gpgcheck: no
+
+    - name: "Package Installer For Docker"
+      yum:
+        name:
+          - docker
+          - python-pip
+        state: present
+
+    - name: "Installing python library for the Docker Remote API"
+      pip:
+        name: docker-py
+
+    - name: "Start/Enable Docker service"
+      service:
+        name: docker
+        state: restarted
+        enabled: yes
+
+    - name: "Copying Website Contents"
+      copy:
+        src: ./website/
+        dest: /home/ec2-user/website/
+
+    - name: "Pull Webserver Image"
+      docker_image:
+        name: httpd
+        tag: alpine
+        source: pull
+
+    - name: "Create Container"
+      docker_container:
+        name: website
+        state: started
+        detach: yes
+        image: httpd:alpine
+        ports:
+          - 80:80
+        volumes: /home/ec2-user/website/:/usr/local/apache2/htdocs/
+
+
+
+https://www.linkedin.com/pulse/configuring-docker-using-ansible-adnan-shaikh
+

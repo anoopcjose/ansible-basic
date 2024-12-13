@@ -1,0 +1,154 @@
+---
+  - name: "Install LAMP stack in Amazon Linux"
+    hosts: all
+    become: true
+	vars_files:
+	  - lampstack.vars
+
+    tasks:
+      - name: "Update Cache in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        yum:
+          name: "*"
+          state: present
+        tags:
+         - lamp
+
+      - name : "Installing Packages in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        yum:
+          name: "{{ web_packages }}"
+          state: present
+        tags:
+         - apache
+
+      - name: "Install PHP in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        shell: amazon-linux-extras install php7.4 -y
+        tags:
+         - php
+
+      - name: "Creating httpd configuration file in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        template:
+          src: ./httpd.conf
+          dest: /etc/httpd/conf/httpd.conf
+        register: conf_status
+        tags:
+         - apache
+
+      - name: "Restart httpd service in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon" and conf_status.changed == true
+        service:
+          name: "{{item}}"
+          state: restarted
+        with_items:
+          - httpd
+          - php-fpm
+        tags:
+         - apache
+         - php
+
+      - name: "Creating Virtualhost Config in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        template:
+          src: ./amazon_default_sample.conf
+          dest: /etc/httpd/conf.d/{{domain_name}}.conf
+        tags:
+         - apache
+
+      - name: "Create virtual config Directory in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        file:
+          path: /var/www/html/{{domain_name}}
+          state: directory
+          owner: "{{httpd_user}}"
+          group: "{{httpd_user}}"
+        tags:
+         - apache
+
+      - name: "Installing MySQL module using python pip in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        pip:
+          name: MySQL-python
+          state: present
+        tags:
+         - lamp
+
+      - name : "Installing Packages in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        yum:
+          name: "{{ db_packages }}"
+          state: present
+        tags:
+         - mariadb
+
+      - name: "Lamp - Mariadb-Server Restart/Enabling Service"
+        service:
+          name: mariadb
+          state: restarted
+          enabled: true
+
+      - name: "Creating Mariadb configuration file in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        template:
+           src: ./.my.cnf.tmpl
+           dest: /root/.my.cnf
+        tags:
+         - mariadb
+
+      - name: "Mariadb - Setting Root password in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        mysql_user:
+          check_implicit_admin: yes
+          config_file: /root/.my.cnf
+          host_all: true
+          user: "{{ mariadb_user }}"
+          password: "{{ mariadb_password }}"
+          login_unix_socket: /var/lib/mysql/mysql.sock
+        tags:
+         - mariadb
+
+      - name: "Mariadb - Removing Anonymous user in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        mysql_user:
+            user: ""
+            host_all: true
+            state: absent
+        tags:
+         - mariadb
+
+      - name: "Mariadb - Removing Test database in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        mysql_db:
+           name: "test"
+           state: absent
+        tags:
+         - mariadb
+
+      - name: "httpd configuration file check in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        shell: apachectl -t
+        register: httpdsyntaxcheck_status
+        tags:
+         - apache
+
+      - name: "Print debug output in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        debug:
+           var: httpdsyntaxcheck_status
+        tags:
+          - apache
+
+      - name: "Restart httpd if syntax is okay in Amazon Linux"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon" and httpdsyntaxcheck_status.stderr == "Syntax OK" and  conf_status.changed == true
+        service:
+          name: "{{item}}"
+          state: restarted
+          enabled: true
+        with_items:
+         - httpd
+         - php-fpm.service
+         - mariadb
+        tags:
+         - lamp

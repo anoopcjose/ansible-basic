@@ -1,0 +1,81 @@
+
+
+drupal/amazon/apache/01
+
+sudo yum -y update
+sudo yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+sudo yum -y install https://rpms.remirepo.net/enterprise/remi-release-7.rpm
+sudo yum makecache
+sudo yum -y install yum-utils
+sudo  amazon-linux-extras | grep php
+
+sudo yum-config-manager --disable 'remi-php*'
+sudo amazon-linux-extras enable php8.0 
+Now you can install:
+sudo yum clean metadata
+sudo yum install php-cli php-pdo php-fpm php-mysqlnd
+
+sudo yum clean metadata
+sudo yum install php-{pear,cgi,pdo,common,curl,mbstring,gd,mysqlnd,gettext,bcmath,json,xml,fpm,intl,zip}
+
+[ec2-user@drupal-amazon ~]$ php --version
+PHP 8.0.25 (cli) (built: Oct 31 2022 22:42:34) ( NTS )
+Copyright (c) The PHP Group
+Zend Engine v4.0.25, Copyright (c) Zend Technologies
+[ec2-user@drupal-amazon ~]$
+
+sudo yum -y install httpd
+sudo systemctl enable --now httpd
+sudo systemctl restart httpd
+
+Apache Configuration File: /etc/httpd/conf/httpd.conf
+
+echo "<h1>Apache is running fine on Amazon Linux</h1>" | sudo tee /var/www/html/index.html
+
+echo "<?php phpinfo(); ?>" | sudo tee  /var/www/html/info.php
+/etc/httpd/conf/httpd.conf
+
+
+Reference: https://techviewleo.com/install-php-8-on-amazon-linux/
+
+yum install mariadb-server -y
+[root@drupal-amazon ~]# systemctl restart mariadb.service
+[root@drupal-amazon ~]# systemctl enable mariadb.service
+Created symlink from /etc/systemd/system/multi-user.target.wants/mariadb.service to /usr/lib/systemd/system/mariadb.service.
+[root@drupal-amazon ~]#
+
+[root@drupal-amazon ~]# mysql_secure_installation
+
+[root@drupal-amazon ~]# mysql -u root -pmysqlroot123
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MariaDB connection id is 11
+Server version: 5.5.68-MariaDB MariaDB Server
+
+Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+MariaDB [(none)]> create database drupal;
+Query OK, 1 row affected (0.00 sec)
+
+MariaDB [(none)]> create user drupal@'%' identified by 'drupal';
+Query OK, 0 rows affected (0.00 sec)
+
+MariaDB [(none)]> grant all privileges on drupal.* to drupal@'%';
+Query OK, 0 rows affected (0.00 sec)
+
+MariaDB [(none)]> flush privileges;
+Query OK, 0 rows affected (0.00 sec)
+
+MariaDB [(none)]> exit
+Bye
+
+https://techviewleo.com/how-to-install-mariadb-server-on-amazon-linux/
+
+wget -c https://www.drupal.org/download-latest/tar.gz; tar -xzf tar.gz; mv drupal-9.4.8 drupal.reshmamjoby.in; rm -rf tar.gz; mv drupal.reshmamjoby.in /var/www/html/ ; chown -R www-data:www-data /var/www/html/*
+
+<VirtualHost *:80>
+    DocumentRoot "/var/www/html/{{ domain_name }}"
+    ServerName {{ domain_name }}
+
+</VirtualHost>

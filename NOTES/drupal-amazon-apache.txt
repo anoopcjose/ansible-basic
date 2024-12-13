@@ -1,0 +1,199 @@
+---
+- name: "Installing Drupal in Amazon Linux"
+  become: true
+  hosts: drupal
+  vars_files:
+    - repos.vars
+    - drupal-install.vars
+  tasks:
+
+    - name: "Package Update"
+      ignore_errors: true
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      yum:
+        name: '*'
+        state: present
+
+    - name: "Install Repos if Required"
+      ignore_errors: true
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      yum:
+        name: "{{ repositories }}"
+        state: present
+
+    - name: "Make Cache"
+      ignore_errors: true
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      shell: yum makecache
+
+    - name: "Disable Remi-PHP"
+      ignore_errors: true
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      shell: yum-config-manager --disable 'remi-php*'
+
+    - name: "Enable PHP 8"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      shell: amazon-linux-extras enable php8.0
+
+    - name: "Enable mariadb"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      shell: amazon-linux-extras enable mariadb10.5
+
+    - name: yum-clean-metadata
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      ansible.builtin.command: yum clean metadata
+
+    - name: "Amazon Linux- Installing Packages"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      yum:
+        name: "{{ amazon_packages }}"
+        state: present
+      tags:
+        - lamp
+
+    - name: "Amazon Linux: Creating httpd conf"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      template:
+        src: ./httpd.conf
+        dest: /etc/httpd/conf/httpd.conf
+      register: conf_status
+      tags:
+        - lamp
+
+    - name: "Amazon Linux: Restart httpd service"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon" and conf_status.changed == true
+      service:
+        name: "{{ item }}"
+        state: restarted
+      with_items:
+        - "{{ amazon_services }}"
+      tags:
+        - lamp
+
+    - name: "Amazon Linux: Create Document Root for '{{ domain_name }}'"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      file:
+        path: "/var/www/html/{{ domain_name }}"
+        state: directory
+        owner: "{{ amazon_httpd_user }}"
+        group: "{{ amazon_httpd_user }}"
+      tags:
+        - drupal
+
+    - name: "Restarting/Enabling  mariadb service"
+      service:
+        name: mariadb
+        state: started
+        enabled: true
+
+    - name: "Copy MariaDB configuration file"
+      template:
+        src: ./my.cnf
+        dest: "/root/.my.cnf"
+        mode: 0600
+        owner: root
+        group: root
+
+    - name: "Setting Root password"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      mysql_user:
+        check_implicit_admin: yes
+        config_file: /root/.my.cnf
+        host_all: true
+        user: "{{ admin_user }}"
+        password: "{{ admin_password }}"
+        login_unix_socket: /var/lib/mysql/mysql.sock
+
+    - name: "Restart/Enable mariadb service"
+      service:
+        name: mariadb
+        state: restarted
+        enabled: true
+      tags:
+        - mariadb
+
+    - name: "Removing Anonymous User"
+      mysql_user:
+        user: ""
+        host_all: true
+        state: absent
+
+    - name: "Removing Test Database"
+      mysql_db:
+        name: "test"
+        state: absent
+
+    - name: "Amazon Linux: Create a drupal database"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      mysql_db:
+        name: "{{ drupal_db }}"
+        state: present
+      tags:
+        - drupal
+
+    - name: "Amazon Linux: create a drupal user"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      mysql_user:
+        user: "{{ drupal_user }}"
+        host: "%"
+        password: "{{ drupal_password }}"
+        priv: "{{ drupal_db }}.*:ALL"
+        state: present
+      register: database_status
+      tags:
+        - drupal
+
+    - name: "Amazon Linux: Download Drupal"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      get_url:
+        url: "{{ drupal_url }}"
+        dest: /tmp/tar.gz
+      tags:
+        - drupal
+
+    - name: "Amazon Linux: unzip drupal package"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      unarchive:
+        src: /tmp/tar.gz
+        dest: /tmp/
+        remote_src: true
+      tags:
+        - drupal
+
+    - name: "Amazon Linux: Copy drupal file to Document root of {{ domain_name }}"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      copy:
+        src: /tmp/drupal-9.4.8/
+        dest: "/var/www/html/{{ domain_name }}"
+        owner: "{{ amazon_httpd_user }}"
+        group: "{{ amazon_httpd_user }}"
+        remote_src: true
+      tags:
+        - drupal
+
+    - name: "Amazon Linux: httpd Configuration check"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      shell: httpd -t
+      register: apache_status
+      tags:
+        - lamp
+        - drupal
+
+    - name: "Amazon Linux: Print Status check Output"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      debug:
+        var: apache_status
+      tags:
+        - lamp
+
+    - name: "Amazon Linux: Restart httpd/mariadb if Configuration is valid"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"  and  conf_status.changed == true or database_status == true
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: true
+      with_items:
+        - "{{ amazon_services }}"
+      tags:
+        - lamp
+        - drupal

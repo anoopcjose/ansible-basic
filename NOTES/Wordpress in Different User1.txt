@@ -1,0 +1,450 @@
+---
+  - name: Install Wordpress in Different User Environments: Amazon Linux - Apache and Ubuntu - Nginx
+    hosts: all
+    become: true
+	no_log: true
+	vars_files:
+	  - application.vars
+
+    vars_prompt:
+      - name: wp_database
+        prompt: Enter the Wordpress Database Name
+		private: false
+
+      - name: wp_user
+        prompt: Enter the Wordpress Database Username
+		private: false
+
+      - name: wp_pass
+        prompt: Enter the Wordpress Database Password
+        private: false
+
+    tasks:
+      - name: Update Cache in Amazon Linux.
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        yum:
+          name: "*"
+          state: present
+        tags:
+         - lamp
+      - name : Installing Packages in Amazon Linux
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        yum:
+          name: "{{ amazon_packages }}"
+          state: present
+        tags:
+         - lamp
+      - name: Install php In Amazon linux
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        shell: amazon-linux-extras install php7.4 -y
+        tags:
+         - lamp
+ 
+      - name: Restarting Mariadb In Amazon Linux
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        service:
+          name: mariadb
+          state: started
+        tags:
+         - lamp
+ 
+      - name: Creating Httpd confing in Amazon Linux
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        template:
+          src: ./httpd.conf
+          dest: /etc/httpd/conf/httpd.conf
+        register: conf_status
+        tags:
+         - lamp
+ 
+      - name: Restart Httpd service
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon" and conf_status.changed == true
+        service:
+          name: "{{item}}"
+          state: restarted
+        with_items:
+          - httpd
+           - php-fpm
+        tags:
+         - lamp
+ 
+      - name: Creating Virtualhost Config
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        template:
+          src: ./amazon_default_sample.conf
+          dest: /etc/httpd/conf.d/default.conf
+        tags:
+         - lamp
+ 
+      - name: Create virtual config Directory
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        file:
+          path: /var/www/html/{{domain_name}}
+          state: directory
+          owner: "{{httpd_user}}"
+          group: "{{httpd_user}}"
+        tags:
+         - lamp
+ 
+      - name: Testing is Php is working or not
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        copy:
+           src: "{{item}}"
+           dest: /var/www/html/{{domain_name}}
+           owner: "{{httpd_user}}"
+           group: "{{httpd_user}}"
+        with_items:
+          - test.php
+           - index.html
+        tags:
+         - lamp
+ 
+      - name: Installing Pip Module
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        pip:
+          name: MySQL-python
+          state: present
+        tags:
+         - lamp
+ 
+      - name: creating mycnf for Mariadb
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        template:
+           src: ./mycnfsample
+           dest: /root/.my.cnf
+      - name: Setting Root password
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        mysql_user:
+          check_implicit_admin: yes
+          config_file: /root/.my.cnf
+          host_all: true
+          user: root
+          password: "{{ mysqlrootpass }}"
+          login_unix_socket: /var/lib/mysql/mysql.sock
+        tags:
+         - mysql
+ 
+      - name: "Mariadbd-Server - Removing Anonymous user"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        mysql_user:
+            user: ""
+            host_all: true
+            state: absent
+        tags:
+         - mysql
+ 
+      - name: "Removing Test database"
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        mysql_db:
+           name: "test"
+           state: absent
+        tags:
+         - mysql
+ 
+      - name: Create a Worpress db
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        mysql_db:
+           name: "{{ database }}"
+           state: present
+        tags:
+         - mysql
+ 
+      - name: create a wordpress user
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        mysql_user:
+             user: "{{ username }}"
+             host: "%"
+             password: "{{ password }}"
+             priv: '{{ database }}.*:ALL'
+             state: present
+        tags:
+         - mysql
+ 
+      - name: Download Wordpress
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        get_url:
+          url: "{{wp_url}}"
+          dest: /tmp/wordpress.zip
+        tags:
+         - wordpress
+      - name: unzip wordpress file
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        unarchive:
+          src: /tmp/wordpress.zip
+          dest: /tmp/
+          remote_src: true
+        tags:
+         - wordpress
+      - name: copy wordpress file to document root
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        copy:
+          src: /tmp/wordpress/
+          dest: /var/www/html/{{domain_name}}
+          owner: "{{httpd_user}}"
+          group: "{{httpd_user}}"
+          remote_src: true
+        tags:
+         - wordpress
+      - name: Config wp-config to Accomadate Database
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        template:
+          src: ./wp-config-sample.php
+          dest: /var/www/html/{{domain_name}}/wp-config.php
+          owner: "{{httpd_user}}"
+          group: "{{httpd_user}}"
+        tags:
+         - wordpress
+      - name: Httpd Config check
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        shell: apachectl -t
+        register: amazonsyntaxcheck_status
+        tags:
+         - lamp
+      - name: print debug output
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        debug:
+           var: amazonsyntaxcheck_status
+        tags:
+          - lamp
+      - name: Restart httpd if syntax is okay
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon" and amazonsyntaxcheck_status.stderr == "Syntax OK" and  conf_status.changed == true
+        service:
+          name: "{{item}}"
+          state: restarted
+          enabled: true
+        with_items:
+         - httpd
+          - php-fpm.service
+        tags:
+         - lamp
+      - name: Cleanup
+        when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+        file:
+          path: "{{ item }}"
+          state: absent
+        with_items:
+         - "/tmp/wordpress.tar.gz"
+          - "/tmp/wordpress/"
+          - "/var/www/html/index.html"
+          - "/var/www/html/{{domain_name}}/index.html"
+ 
+        tags:
+         - wordpress
+ 
+ 
+ 
+ 
+ 
+ 
+            ############################***UBUNTU***########################
+      - name: Update Cache in Ubuntu Linux.
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        apt:
+          update_cache: true
+        tags:
+         - lamp
+ 
+      - name : Installing Packages in Ubunt Linux
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        apt:
+          name: "{{ ubuntu_packages }}"
+          state: present
+        tags:
+         - lamp
+ 
+      - name: Restarting Mariadb In ubuntu Linux
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        service:
+          name: mariadb
+          state: started
+        tags:
+         - lamp
+ 
+      - name: Changing Port for Apache In Ubuntu
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        template:
+          src: ./ports.conf
+          dest: /etc/apache2/ports.conf
+        register: port_status
+        tags:
+         - lamp
+ 
+      - name: Restart apache2
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu" and port_status.changed == true
+        service:
+          name: "{{item}}"
+          state: restarted
+        with_items:
+         - apache2
+          - php8.1-fpm.service
+        tags:
+         - lamp
+ 
+      - name: Creating Virtualhost Config
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        template:
+          src: ./ubuntu_default_sample.conf
+          dest: /etc/apache2/sites-available/000-default.conf
+        tags:
+         - lamp
+ 
+      - name: Create virtual config Directory
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        file:
+          path: /var/www/html/{{domain_name}}
+          state: directory
+          owner: "{{apache_user}}"
+          group: "{{apache_user}}"
+        tags:
+         - lamp
+ 
+      - name: Testing is Php is woorking or not
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        copy:
+           src: "{{item}}"
+           dest: /var/www/html/{{domain_name}}
+           owner: "{{apache_user}}"
+           group: "{{apache_user}}"
+        with_items:
+          - test.php
+           - index.html
+        tags:
+         - lamp
+ 
+      - name: creating mycnf for Mariadb
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        template:
+           src: ./mycnfsample
+           dest: /root/.my.cnf
+        tags:
+         - mysql
+ 
+      - name: Python Module install
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        pip:
+           name: pymysql
+           state: present
+        tags:
+         - mysql
+ 
+      - name: Setting Root password
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        mysql_user:
+           check_implicit_admin: yes
+           config_file: /root/.my.cnf
+           user: root
+           password: "{{mysqlrootpass}}"
+           host_all: true
+           login_unix_socket: /run/mysqld/mysqld.sock
+        tags:
+         - mysql
+ 
+      - name: "Mariadbd-Server - Removing Anonymous user"
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        mysql_user:
+            user: ""
+            host_all: true
+            state: absent
+        tags:
+         - mysql
+ 
+      - name: "Removing Test database"
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        mysql_db:
+            name: "test"
+            state: absent
+        tags:
+         - mysql
+ 
+      - name: Create a Worpress db
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        mysql_db:
+            name: "{{ database }}"
+            state: present
+      - name: create a wordpress user
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        mysql_user:
+             user: "{{ username }}"
+             host: "%"
+             password: "{{ password }}"
+             priv: '{{ database }}.*:ALL'
+             state: present
+        tags:
+         - mysql
+ 
+      - name: Download Wordpress
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        get_url:
+          url: "{{wp_url}}"
+          dest: /tmp/wordpress.zip
+        tags:
+         - wordpress
+ 
+      - name: unzip wordpress file
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        unarchive:
+          src: /tmp/wordpress.zip
+          dest: /tmp/
+          remote_src: true
+        tags:
+         - wordpress
+ 
+      - name: copy wordpress file to document root
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        copy:
+          src: /tmp/wordpress/
+          dest: /var/www/html/{{domain_name}}
+          owner: "{{apache_user}}"
+          group: "{{apache_user}}"
+          remote_src: true
+        tags:
+         - wordpress
+ 
+      - name: Config wp-config to Accomadate Database
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        template:
+          src: ./wp-config-sample.php
+          dest: /var/www/html/{{domain_name}}/wp-config.php
+          owner: "{{apache_user}}"
+          group: "{{apache_user}}"
+        tags:
+         - wordpress
+ 
+      - name: Httpd Config check
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        shell: apachectl -t
+        register: ubuntusyntaxcheck_status
+        tags:
+         - lamp
+ 
+      - name: print debug output
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        debug:
+           var: ubuntusyntaxcheck_status
+        tags:
+          - lamp
+ 
+      - name: Restart httpd if syntax is okay
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu" and ubuntusyntaxcheck_status.stderr == "Syntax OK" and port_status.changed == true
+        service:
+          name: "{{item}}"
+          state: restarted
+          enabled: true
+        with_items:
+         - apache2
+          - php8.1-fpm.service
+        tags:
+         - lamp
+      - name: Cleanup
+        when: ansible_os_family == "Debian" and ansible_distribution == "Ubuntu"
+        file:
+          path: "{{ item }}"
+          state: absent
+        with_items:
+         - "/tmp/wordpress.tar.gz"
+          - "/tmp/wordpress/"
+          - "/var/www/html/index.html"
+          - "/var/www/html/{{domain_name}}/index.html"
+ 
+        tags:
+         - wordpress

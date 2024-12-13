@@ -1,0 +1,109 @@
+---
+- name: "Ansible VPC Project"
+  hosts: localhost
+  vars_files:
+    - vpc.vars
+  tasks:
+    - name: "Creating VPC"
+      amazon.aws.ec2_vpc_net:
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        region: "{{ region }}"
+        name: "{{ vpc_name }}"
+        cidr_block: "{{ vpc_cidr}}"
+        dns_support: true
+        dns_hostnames: true
+        tenancy: default
+        state: "{{ vpc_state }}"
+      register: vpc_status
+
+    - debug:
+        var: vpc_status
+
+    - name: "Create internet gateway for VPC"
+      amazon.aws.ec2_vpc_igw:
+        state: present
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        region: "{{ region }}"
+        vpc_id: "{{ vpc_status.vpc.id }}"
+        tags:
+          Name: ansibleVPC_IGW
+      register: ansibleVPC_igw
+
+    - name: display ansibleVPC IGW details
+      debug: var=ansibleVPC_igw
+
+    - name: obtain all AZ present in region "{{ region }}"
+      amazon.aws.aws_az_info:
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        region: "{{ region }}"
+      register: zonelist
+
+    - name: display all AZ present in region "{{ region }}"
+      debug:
+        var: zonelist
+
+    - name: "Create Public Subnets"
+      amazon.aws.ec2_vpc_subnet:
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        region: "{{ region }}"
+        vpc_id: "{{ vpc_status.vpc.id }}"
+        state: present
+        map_public: true
+        cidr: "{{ item.value.cidr }}"
+        az: "{{ item.value.az }}"
+        tags:
+          Name: "public subnet"
+      with_dict: "{{ public_subnet }}"
+      register: public_subnet
+
+    - debug:
+        var: public_subnet
+
+    - name: "Create Private Subnets"
+      amazon.aws.ec2_vpc_subnet:
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        region: "{{ region }}"
+        vpc_id: "{{ vpc_status.vpc.id }}"
+        state: present
+        map_public: false
+        cidr: "{{ item.value.cidr }}"
+        az: "{{ item.value.az }}"
+        tags:
+          Name: "private subnet"
+      with_dict: "{{ private_subnet }}"
+      register: private_subnet
+
+    - name: "Create Elastic IP"
+      amazon.aws.ec2_eip:
+        state: present
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        region: "{{ region }}"
+        in_vpc: true
+        reuse_existing_ip_allowed: true
+        tags: "{{ common_tags }}"
+      register: eip_value
+
+    - name: create new route table for public subnet
+      amazon.aws.ec2_vpc_route_table:
+        state: present
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        region: "{{ region }}"
+        vpc_id: "{{ vpc_status.vpc.id }}"
+        tags:
+          Name: route_tb_PublicSubnet
+          subnets:
+            - "{{ public_subnet.subnet.id }}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ ansibleVPC_igw.gateway_id }}"
+      register: rt_VPC_PublicSubnet
+
+    - name: display public route table
+      debug: var=rt_VPC_PublicSubnet

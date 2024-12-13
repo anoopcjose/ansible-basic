@@ -1,0 +1,59 @@
+Loops in Ansible: https://ericsysmin.com/2019/06/20/how-to-loop-blocks-of-code-in-ansible/
+
+https://subscription.packtpub.com/book/networking-&-servers/9781787125681/1/ch01lvl1sec13/variable-precedence
+
+https://www.youtube.com/watch?v=3d8H2f5kCB4
+
+Working With Ansible Prompts | Automation Using Ansible | DevOps Tool 
+https://www.youtube.com/watch?v=8-22ZhXVeu8
+
+https://www.cloudbees.com/blog/ansible-lineinfile-9-ways-to-use-it-to-improve-your-playbooks
+The lineinfile module looks for a specific line in a file and replaces it with a predefined regular expression. The replace module replaces all instances of a specific pattern within a file, and blockinfile inserts, modifies, or deletes one or several lines of text located between two marker lines in a file.
+
+https://blog.scottlowe.org/2016/10/23/managing-aws-infrastructure-ansible/
+
+https://www.redhat.com/en/topics/automation/ansible-vs-terraform?intcmp=701f20000012ngPAAQ
+
+https://www.redhat.com/sysadmin/ansible-lists-dictionaries-yaml
+
+https://ericsysmin.com/2019/06/20/how-to-loop-blocks-of-code-in-ansible/
+
+EC2 Launch Types: https://youtu.be/_d42iIc-P5I
+
+
+Microservices:: https://youtu.be/lTAcCNbJ7KE
+
+Redis Crash Course
+https://www.youtube.com/watch?v=jgpVdJB2sKQ
+
+ECS Logging and Monitoring
+https://www.youtube.com/watch?v=7LAEYXLqIs8
+
+https://www.techtarget.com/searchapparchitecture/definition/microservices
+
+https://www.pair.com/support/kb/what-is-an-srv-record/
+
+19/11 - no class
+
+https://docs.docker.com/engine/swarm/configs/#configure-the-nginx-container
+
+https://github.com/anandu79/IP-geolocation-containerized-project-with-Application-Load-Balancer
+
+https://www.youtube.com/watch?v=zvBZDF3HIbM
+Commands for auto complete by history:
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+set show-all-if-ambiguous on
+set completion-ignore-case on
+
+
+
+https://www.ibm.com/cloud/blog/how-to-use-an-ansible-playbook-to-manage-secrets-for-infrastructure-provisioned-on-ibm-cloud
+
+https://www.cloudbees.com/blog/how-to-keep-your-playbooks-secure-with-ansible-vault
+
+https://steampunk.si/blog/aws-credentials-safety/
+
+https://stackoverflow.com/questions/71952835/extract-secret-value-only-from-secretstring-using-ansible-amazon-aws-aws-secret
+
+https://stackoverflow.com/questions/55827575/lookup-secrets-from-aws-secret-manager-ansible

@@ -1,0 +1,222 @@
+---
+- name: "Install Wordpress in Different User Environments Amazon Linux - Apache and Ubuntu - Nginx"
+  hosts: amazon
+  become: true
+  vars_files:
+    - application.vars
+
+  vars_prompt:
+    - name: wp_database
+      prompt: Enter the Wordpress Database Name
+      private: false
+
+    - name: wp_user
+      prompt: Enter the Wordpress Database Username
+      private: false
+
+    - name: wp_password
+      prompt: Enter the Wordpress Database Password
+      private: false
+
+  tasks:
+    - name: "Amazon Linux: Installing Packages"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      yum:
+        name: "{{ amazon_packages }}"
+        state: present
+      tags:
+       - lamp
+
+    - name: "Amazon Linux: Install PHP"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      shell: amazon-linux-extras install php7.4 -y
+      tags:
+       - lamp
+       - php
+
+    - name: "Amazon Linux: Creating Webserver (Apache) configuration file from template"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      template:
+        src: httpd.conf.tmpl
+        dest: /etc/httpd/conf/httpd.conf
+        owner: "{{ httpd_owner }}"
+        group: "{{ httpd_group }}"
+      tags:
+        - lamp
+        - apache
+
+    - name: "Amazon Linux: Check the status of Apache configuration file"
+      when: ansible_os_family == "RedHat" and ansible_distribution == "Amazon"
+      shell: httpd -t
+      register: httpd_conf_status
+      tags:
+        - lamp
+        - apache
+
+    - name: "Amazon Linux: Display the content of httpd_conf_status"
+      debug:
+        var: httpd_conf_status
+
+    - name: "Amazon Linux - Creating Virtualhost Configuration File {{ httpd_domain }}"
+      template:
+        src: virtualhost.conf.tmpl
+        dest: /etc/httpd/conf.d/default.conf
+        owner: "{{ httpd_owner }}"
+        group: "{{ httpd_group }}"
+      tags:
+        - lamp
+        - apache
+
+    - name: "Amazon Linux - Creating Documentroot For the virtualhost  {{ httpd_domain }}"
+      file:
+        path: "/var/www/html/{{ httpd_domain }}"
+        state: directory
+        owner: "{{ httpd_owner }}"
+        group: "{{ httpd_group }}"
+      tags:
+        - lamp
+        - apache
+
+    - name: "Amazon Linux - Copying test pages into documentroot /var/www/html/{{ httpd_domain }}"
+      copy:
+        src: "{{ item }}"
+        dest: "/var/www/html/{{ httpd_domain }}"
+        owner: "{{ httpd_owner }}"
+        group: "{{ httpd_group }}"
+      with_items:
+        - info.php
+        - test.html
+      tags:
+        - lamp
+        - apache
+
+    - name: "Amazon Linux - Restarting Apache & php service"
+      ignore_errors: true
+      when: httpd_conf_status.rc == 0
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: true
+      with_items:
+        - "httpd"
+        - "php-fpm"
+      tags:
+        - lamp
+        - apache
+        - php
+
+    - name: "Amazon Linux - Mariadb-Server Installation"
+      yum:
+        name: "{{ mysql_packages }}"
+        state: present
+      tags:
+        mariadb
+
+    - name: "Amazon Linux - Mariadb-Server Restart/Enabling Service"
+      service:
+        name: mariadb
+        state: restarted
+        enabled: true
+      tags:
+        - mariadb
+
+    - name: "Amazon Linux - Copy MariaDB configuration file"
+      template:
+        src: my.cnf
+        dest: "/root/.my.cnf"
+        mode: 0600
+        owner: root
+        group: root
+      tags:
+        - mariadb
+
+    - name: "Amazon Linux - Mariadb-Server Removing Anonymous Users"
+      mysql_user:
+        user: ""
+        host_all: true
+        state: absent
+      tags:
+        -mariadb
+
+    - name: "Amazon Linux - Mariadb-Server Removing Test Database"
+      mysql_db:
+        name: "test"
+        state: absent
+      tags:
+        - mariadb
+
+    - name: "Amazon Linux - Mariadb-Server Creating Extra Database {{ wp_database }} "
+      mysql_db:
+        name: "{{ wp_database }}"
+        state: present
+      tags:
+        - mariadb
+
+    - name: "Amazon Linux - Mariadb-Server Creating Extra User {{ wp_user }} "
+      mysql_user:
+        user: "{{ wp_user }}"
+        host: "%"
+        password: "{{ wp_password }}"
+        priv: '{{ wp_database }}.*:ALL'
+        state: present
+      tags:
+        - mariadb
+
+    - name: "Wordpress - Downloading wordpress archive file"
+      get_url:
+        url: "{{ wp_url }}"
+        dest: /tmp/wordpress.tar.gz
+      tags:
+        - wordpress
+
+    - name: "Wordpress - Extrating Wordpress archive"
+      unarchive:
+        src: /tmp/wordpress.tar.gz
+        dest: /tmp/
+        remote_src: true
+      tags:
+        - wordpress
+
+    - name: "Wordpress - Copying files to documentroot /var/www/html/{{ httpd_domain }}"
+      copy:
+        src: /tmp/wordpress/
+        dest: "/var/www/html/{{ httpd_domain }}"
+        owner: "{{ httpd_owner }}"
+        group: "{{ httpd_group }}"
+        remote_src: true
+      tags:
+        - wordpress
+
+    - name: "Wordpress - Creating wp-config.php from template"
+      template:
+        src: wp-config.php.tmpl
+        dest: "/var/www/html/{{ httpd_domain }}/wp-config.php"
+        owner: "{{ httpd_owner }}"
+        group: "{{ httpd_group }}"
+      tags:
+        - wordpress
+
+    - name: "Post-installation restart"
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: true
+      with_items:
+        - "mariadb"
+        - "httpd"
+        - "php-fpm"
+      tags:
+        - lamp
+        - apache
+        - php
+        - mariadb
+
+    - name: "Post-Installation Cleanup"
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - "/tmp/wordpress.tar.gz"
+        - "/tmp/wordpress/"
+      tags:
+        - wordpress

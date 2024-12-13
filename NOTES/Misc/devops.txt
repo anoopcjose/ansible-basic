@@ -1,0 +1,28 @@
+https://jupyter-notebook.readthedocs.io/en/stable/public_server.html
+
+
+https://www.edureka.co/blog/devops-resume
+
+https://www.knowledgehut.com/blog/devops/devops-resume
+
+https://www.knowledgehut.com/_next/image?url=https%3A%2F%2Fd2o2utebsixu4k.cloudfront.net%2Fmedia%2Fimages%2F1665299831330-1.png&w=1080&q=75
+
+https://www.knowledgehut.com/_next/image?url=https%3A%2F%2Fd2o2utebsixu4k.cloudfront.net%2Fmedia%2Fimages%2F1665299861672-2.png&w=1080&q=75
+
+https://d2o2utebsixu4k.cloudfront.net/media/files/0cd04abb-fafe-43cc-845b-1dee2bad7f03.pdf
+
+https://d2o2utebsixu4k.cloudfront.net/media/files/9a3f1a40-997e-4993-b75e-ac451ccd0095.pdf
+
+Cloud Platforms		: Amazon Web Services, Openstack
+Configuration Management	: Ansible
+Infrastructure as a Code	: Terraform
+Containerization		: Docker, ECS
+Source Code Management	: Github
+Orchestration			: Docker Swarm, ECS
+Programming/Scripting	: Python, BASH, C
+
+https://www.simplilearn.com/tutorials/devops-tutorial/devops-tools
+
+https://www.google.com/imgres?imgurl=https%3A%2F%2Fd2908q01vomqb2.cloudfront.net%2Ffc074d501302eb2b93e2554793fcaf50b3bf7291%2F2022%2F02%2F22%2FFig1-xAcct-pipeline-1024x559.png&imgrefurl=https%3A%2F%2Faws.amazon.com%2Fblogs%2Farchitecture%2Fcategory%2Fdevops%2F&tbnid=dCG5qG1kzjNv3M&vet=12ahUKEwiepIXa8o38AhViiNgFHV-7BQMQMygJegUIARDTAQ..i&docid=4sp9uMcdOD5hUM&w=1024&h=559&q=AWS%20DevOps%20and%20tools%20used&ved=2ahUKEwiepIXa8o38AhViiNgFHV-7BQMQMygJegUIARDTAQ
+
+https://nxp-semiconductors.talentify.io/job/it-devops-engineer-bengaluru-north-ka-nxp-semiconductors-r-10037505-1?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic

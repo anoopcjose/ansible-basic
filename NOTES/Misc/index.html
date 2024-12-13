@@ -1,0 +1,16 @@
+<html>
+<h2>Enter Your Full Name</h2>
+
+<input id="name" type="text">
+<button type="button" onclick="EnterName()">View Message</button>
+<p style="color:green" id="app"></p>
+  
+</html>
+<script>
+    function EnterName()
+    {
+        var username= document.getElementById("name").value;
+      
+        document.getElementById("app").innerHTML = "Welcome to the Sample Web application "+ username ;
+    }
+</script>

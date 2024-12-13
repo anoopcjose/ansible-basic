@@ -1,0 +1,280 @@
+#!/bin/bash
+ 
+echo "ClientAliveInterval 60" >> /etc/ssh/sshd_config
+echo "LANG=en_US.utf-8" >> /etc/environment
+echo "LC_ALL=en_US.utf-8" >> /etc/environment
+sudo zypper refresh
+sudo zypper install --no-confirm openssh
+sudo systemctl start sshd
+sudo systemctl enable sshd
+
+sudo hostnamectl set-hostname drupal-opensuse
+===================================================
+drupal-client:~ # sudo zypper install apache2
+
+The following recommended package was automatically selected:
+  w3m
+
+The following 9 NEW packages are going to be installed:
+  apache2 apache2-prefork apache2-utils libapr1 libapr-util1 libbrotlienc1 libgc1 system-user-wwwrun w3m
+
+/usr/sbin/groupadd -r www
+/usr/sbin/useradd -r -c WWW daemon apache -d /var/lib/wwwrun -U wwwrun -s /usr/sbin/nologin
+/usr/sbin/usermod -a -G www wwwrun
+
+Updating /etc/sysconfig/apache2 ...
+
+
+drupal-client:~ # sudo systemctl start apache2
+drupal-client:~ #
+
+drupal-client:~ # sudo systemctl enable apache2
+Created symlink /etc/systemd/system/httpd.service → /usr/lib/systemd/system/apache2.service.
+Created symlink /etc/systemd/system/apache.service → /usr/lib/systemd/system/apache2.service.
+Created symlink /etc/systemd/system/multi-user.target.wants/apache2.service → /usr/lib/systemd/system/apache2.service.
+drupal-client:~ #
+
+/etc/apache2/global.conf
+
+ServerSignature off
+UseCanonicalName off
+ServerTokens ProductOnly
+LogLevel warn
+CustomLog /var/log/apache2/access_log combined
+
+ServerSignature on
+UseCanonicalName off
+ServerTokens Full
+LogLevel warn
+CustomLog /var/log/apache2/access_log combined
+
+
+mod_mime-defaults.conf
+
+AddType application/x-httpd-php .php .phtml .html
+
+
+
+drupal-client:/etc # httpd -v
+Server version: Apache/2.4.51 (Linux/SUSE)
+Server built:   2022-06-10 07:45:34.000000000 +0000
+drupal-client:/etc #
+
+
+echo "<h1>Apache2 is running fine on openSUSE Leap</h1>" | sudo tee /srv/www/htdocs/index.html
+
+===================================================
+
+sudo zypper install mariadb mariadb-client 
+
+The following 8 NEW packages are going to be installed:
+  libJudy1 libltdl7 libmariadb3 libodbc2 mariadb mariadb-client mariadb-errormessages python3-mysqlclient
+
+/usr/sbin/useradd -r -c MySQL database admin -d /var/lib/mysql -U -u 60 mysql -s /usr/sbin/nologin
+
+You have just installed MariaDB server for the first time.
+
+You can start it via:
+ systemctl start mariadb
+or
+ rcmysql start
+
+During the first start, empty database will be created for you automatically.
+
+PLEASE REMEMBER TO SET A PASSWORD FOR THE MariaDB root USER!
+To do so, start the server and run the following commands:
+
+'/usr/bin/mysqladmin' -u root password 'new-password'
+'/usr/bin/mysqladmin' -u root -h <hostname> password 'new-password'
+
+Alternatively you can run:
+'/usr/bin/mysql_secure_installation'
+
+drupal-client:/srv/www/htdocs # /usr/bin/mysql_secure_installation
+
+NOTE: RUNNING ALL PARTS OF THIS SCRIPT IS RECOMMENDED FOR ALL MariaDB
+      SERVERS IN PRODUCTION USE!  PLEASE READ EACH STEP CAREFULLY!
+
+In order to log into MariaDB to secure it, we'll need the current
+password for the root user. If you've just installed MariaDB, and
+haven't set the root password yet, you should just press enter here.
+
+Enter current password for root (enter for none):
+OK, successfully used password, moving on...
+
+Setting the root password or using the unix_socket ensures that nobody
+can log into the MariaDB root user without the proper authorisation.
+
+You already have your root account protected, so you can safely answer 'n'.
+
+Switch to unix_socket authentication [Y/n] n
+ ... skipping.
+
+You already have your root account protected, so you can safely answer 'n'.
+
+Change the root password? [Y/n] n
+ ... skipping.
+
+By default, a MariaDB installation has an anonymous user, allowing anyone
+to log into MariaDB without having to have a user account created for
+them.  This is intended only for testing, and to make the installation
+go a bit smoother.  You should remove them before moving into a
+production environment.
+
+Remove anonymous users? [Y/n] y
+ ... Success!
+
+Normally, root should only be allowed to connect from 'localhost'.  This
+ensures that someone cannot guess at the root password from the network.
+
+Disallow root login remotely? [Y/n] Y
+ ... Success!
+
+By default, MariaDB comes with a database named 'test' that anyone can
+access.  This is also intended only for testing, and should be removed
+before moving into a production environment.
+
+Remove test database and access to it? [Y/n] Y
+ - Dropping test database...
+ ... Success!
+ - Removing privileges on test database...
+ ... Success!
+
+Reloading the privilege tables will ensure that all changes made so far
+will take effect immediately.
+
+Reload privilege tables now? [Y/n] Y
+ ... Success!
+
+Cleaning up...
+
+All done!  If you've completed all of the above steps, your MariaDB
+installation should now be secure.
+
+Thanks for using MariaDB!
+drupal-client:/srv/www/htdocs #
+
+
+sudo systemctl enable mariadb
+
+drupal-client:/srv/www/htdocs # sudo systemctl enable mariadb
+Created symlink /etc/systemd/system/mysql.service → /usr/lib/systemd/system/mariadb.service.
+Created symlink /etc/systemd/system/multi-user.target.wants/mariadb.service → /usr/lib/systemd/system/mariadb.service.
+drupal-client:/srv/www/htdocs #
+
+===================================================
+
+
+drupal-client:~ # mysql -u root -pmysqlroot123
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MariaDB connection id is 11
+Server version: 10.6.10-MariaDB MariaDB package
+
+Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+MariaDB [(none)]> create database drupal;
+Query OK, 1 row affected (0.000 sec)
+
+MariaDB [(none)]> create user drupal@'%' identified by 'drupal';
+Query OK, 0 rows affected (0.002 sec)
+
+MariaDB [(none)]> grant all privileges on drupal.* to drupal@'%';
+Query OK, 0 rows affected (0.001 sec)
+
+MariaDB [(none)]> flush privileges;
+Query OK, 0 rows affected (0.000 sec)
+
+MariaDB [(none)]> exit
+Bye
+
+
+https://www.hiroom2.com/2017/05/31/opensuse-leap-42-install-drupal/
+
+https://docs.ansible.com/ansible/latest/collections/community/general/zypper_module.html
+
+http://man.hubwiz.com/docset/Ansible.docset/Contents/Resources/Documents/docs.ansible.com/ansible/zypper_module.html
+
+https://www.drupal.org/docs/7/install/step-2-create-the-database
+
+https://www.tecmint.com/install-drupal-in-ubuntu-debian/
+
+https://github.com/priyesh2/Wordpress_and_Drupal-Installation
+
+https://www.drupal.org/download
+
+https://www.drupal.org/project/drupal/issues/2873190
+
+https://drupal.stackexchange.com/questions/198225/install-drupal-8-on-mamp-cant-detect-version-of-apache
+
+
+
+
+https://en.opensuse.org/SDB:LAMP_setup
+
+https://www.tecmint.com/install-lamp-apache-php-mariadb-phpmyadmin-in-opensuse/
+
+https://www.drupal.org/download-latest/tar.gz
+
+
+
+Install PHP 8.0 on openSUSE 15 Leap
+sudo zypper refresh
+sudo zypper update
+sudo zypper install php8
+
+The following 9 recommended packages were automatically selected:
+  php8-ctype php8-dom php8-iconv php8-openssl php8-sqlite php8-tokenizer php8-xmlreader php8-xmlwriter postfix
+
+The following 4 packages are suggested, but will not be installed:
+  php8-gd php8-gettext php8-mbstring php8-mysql
+
+The following 12 NEW packages are going to be installed:
+  php8 php8-cli php8-ctype php8-dom php8-iconv php8-openssl php8-pdo php8-sqlite php8-tokenizer php8-xmlreader php8-xmlwriter postfix
+
+/usr/sbin/groupadd -r -g 59 maildrop
+/usr/sbin/groupadd -r -g 51 postfix
+/usr/sbin/useradd -r -c Postfix Daemon -d /var/spool/postfix -g postfix -u 51 postfix -s /usr/sbin/nologin
+/usr/sbin/usermod -a -G maildrop postfix
+/usr/sbin/usermod -a -G mail postfix
+Updating /etc/sysconfig/postfix ...
+Updating /etc/sysconfig/mail ...
+Created symlink /etc/systemd/system/multi-user.target.wants/postfix.service -> /usr/lib/systemd/system/postfix.service.
+
+zypper ps -s
+
+drupal-client:/etc/apache2 # php -v
+PHP 8.0.25 (cli) (built: Oct 31 2022 12:00:00) ( NTS )
+Copyright (c) The PHP Group
+Zend Engine v4.0.25, Copyright (c) Zend Technologies
+drupal-client:/etc/apache2 #
+
+echo "<?php phpinfo(); ?>" | sudo tee  /srv/www/htdocs/info.php
+
+
+/srv/www/htdocs/drupal.reshmamjoby.in
+
+wget -c https://www.drupal.org/download-latest/tar.gz; tar -xzf tar.gz; mv drupal-9.4.8 drupal.reshmamjoby.in; rm -rf tar.gz; mv drupal.reshmamjoby.in /srv/www/htdocs/ ;  mkdir /srv/www/htdocs/drupal.reshmamjoby.in/sites/default/files ; chown -R wwwrun:wwwrun /srv/www/htdocs/*
+
+sudo zypper install apache2-mod_php8 php8-curl php8-mysql php8-mbstring php8-gd php8-fpm php8-fastcgi
+
+[opcache]
+zend_extension=php_opcache.dll
+;Determines if Zend OPCache in enabled
+opcache.enable=1
+opcache.memory_consumption=128
+opcache.interned_strings_buffer=8
+opcache.max_accelerated_files=4000
+opcache.revalidate_freq=60
+opcache.fast_shutdown=1
+
+drupal-opensuse:/etc/php8/apache2 # ll
+total 72
+-rw-r--r-- 1 root root 72565 Nov 11 12:32 php.ini
+drupal-opensuse:/etc/php8/apache2 # vi php.ini
+drupal-opensuse:/etc/php8/apache2 # systemctl restart apache2.service
+drupal-opensuse:/etc/php8/apache2 # sudo a2enmod rewrite
+drupal-opensuse:/etc/php8/apache2 # systemctl restart apache2.service
+
+

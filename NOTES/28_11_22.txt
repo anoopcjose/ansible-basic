@@ -1,0 +1,69 @@
+---
+- name: "Managing the Nginx webserver in Ubuntu"
+  hosts: nginx
+  become: true
+  vars_files:
+    - webserver.vars
+  tasks:
+
+    - name: "Installing Nginx Webserver"
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+
+    - name: "Creating Virtual Host Config file from template"
+      template:
+        src: nginx.reshmamjoby.in.tmpl
+        dest: "/etc/nginx/sites-available/{{ domain_name }}.conf"
+        owner: "{{ nginx_owner }}"
+        group: "{{ nginx_group }}"
+
+    - name: "Create symlink to {{ domain_name }}"
+      file:
+        src: "/etc/nginx/sites-available/{{ domain_name }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ domain_name }}.conf"
+        state: link
+        owner: "{{ nginx_owner }}"
+        group: "{{ nginx_group }}"
+
+    - name: "Creating Document root for Virtual Host"
+      file:
+        path: /var/www/html/{{ domain_name }}/
+        state: directory
+        owner: "{{ nginx_owner }}"
+        group: "{{ nginx_group }}"
+
+    - name: "Ubuntu:: Creating index.html page"
+      copy:
+        content: "<center><h1>{{ ansible_hostname }} Test Page</h1></center>"
+        dest: "/var/www/html/{{ domain_name }}/index.html"
+        owner: "{{ nginx_owner }}"
+        group: "{{ nginx_group }}"
+
+
+    - name: "Restarting/Enabling nginx service"
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: true
+      with_items: "{{ services }}"
+
+    - name: "Route 53 A Record Modification"
+      route53:
+        state: present
+        zone: reshmamjoby.com
+        record: "{{ domain_name }}"
+        type: A
+        ttl: 10
+        value: 35.154.160.189
+        wait: yes
+        overwrite: yes
+		
+		
+buddha@AJ:~$ sudo python3 -m pip install boto
+Collecting boto
+  Downloading boto-2.49.0-py2.py3-none-any.whl (1.4 MB)
+     |████████████████████████████████| 1.4 MB 1.9 MB/s
+Installing collected packages: boto
+Successfully installed boto-2.49.0

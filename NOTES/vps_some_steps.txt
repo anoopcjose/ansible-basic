@@ -1,0 +1,118 @@
+
+
+- name: Count our fruit
+  ansible.builtin.debug:
+    msg: "{{ item }} with index {{ my_idx }}"
+  loop:
+    - apple
+    - banana
+    - pear
+  loop_control:
+    index_var: my_idx
+
+- name: Availability Zone Count
+  ansible.builtin.debug:
+    msg: "{{ item }}"
+	az: "{{ item }}"
+	loop:
+            -  "{{ zonelist.availability_zones }}"
+          loop_control:
+            index_var: "{{ item.zone_name }}"
+
+  ec2_vpc_subnet:
+    vpc_id: "{{ vpc_id }}"
+    cidr: "{{ item.value.cidr }}"
+    az: "{{ item.value.az }}"
+    tags:
+      Name: "{{ item.key }}"
+  with_dict: "{{ vpc_subnets }}"
+
+vpc_subnets:
+
+  private-a:
+    cidr: 172.16.128.0/20
+	az: "{{ aws_region }}a"
+  private-b:
+    cidr: 172.16.160.0/20
+	az: "{{ aws_region }}b"
+  private-c:
+    cidr: 172.16.192.0/20
+ 	az: "{{ aws_region }}c"
+
+  public-a:
+    cidr: 172.16.32.0/20
+	az: "{{ aws_region }}a"
+  public-b:
+    cidr: 172.16.64.0/20
+	az: "{{ aws_region }}b"
+  public-c:
+    cidr: 172.16.96.0/20
+	az: "{{ aws_region }}c"
+
+    cidr: "{{ item.value.cidr }}"
+    az: "{{ item.value.az }}"
+	
+
+- name: create new route table for public subnet
+    amazon.aws.ec2_vpc_route_table:
+      state: present
+      region: "{{ region }}"
+      vpc_id: "{{ vpc_status.vpc.id }}"
+      tags:
+        Name: route_tb_PublicSubnet
+      subnets:
+        - "{{ public_subnets.subnet[0].id }}"
+      routes:
+        - dest: 0.0.0.0/0
+          gateway_id: "{{ ansibleVPC_igw.gateway_id }}"
+    register: rt_ansibleVPC_PublicSubnet
+    
+- name: display public route table
+    debug: var=rt_ansibleVPC_PublicSubnet
+
+    - debug:
+        msg: "subnet ID: {{ item.subnet.id }}"
+      with_items: "{{ public_subnet.results }}"
+
+- name: Create new nat gateway using an allocation-id.
+  amazon.aws.ec2_vpc_nat_gateway:
+    state: present
+    subnet_id: subnet-12345678
+    allocation_id: eipalloc-12345678
+    region: ap-southeast-2
+  register: new_nat_gateway
+ 
+ 
+ 
+   - name: "Deploy Bastion Server"
+      amazon.aws.ec2_instance:
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        region: "{{ region }}"
+        key_name: "{{ instance_key }}"
+        instance_type: "{{ instance_type }}"
+        image_id: "{{ instance_ami }}"
+        tags: "{{ instance_tags }}"
+        security_groups: "{{ bastion_sg.group_name }}"
+        vpc_subnet_id: "{{ public_subnet.results[0].subnet.id }}"
+		assign_public_ip: yes
+	register: ec2info
+
+  - name: Display details for Bastion
+    debug:
+	  var=ec2info
+
+For MariaDB 10.5 and higher, following query for password update:
+
+SET PASSWORD FOR 'wpuser'@'%' = PASSWORD('userpass123');
+
+
+https://faun.pub/create-an-aws-vpc-subnet-security-group-and-acl-using-ansible-5a16aaa1042e
+
+https://www.infinitypp.com/ansible/create-vpc-ansible-aws/
+
+https://medium.com/@tomwwright/automating-with-ansible-building-a-vpc-c252944d3d2e
+
+https://rishabh27sharma.medium.com/%EF%B8%8Fconfiguring-aws-vpc-using-ansible-%EF%B8%8F-bbbd7c561a28
+
+https://blog.kloud.com.au/2019/03/13/using-ansible-to-deploy-an-aws-environment/

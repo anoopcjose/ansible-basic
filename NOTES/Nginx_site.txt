@@ -1,0 +1,28 @@
+---
+- name: "Nginx Site Deployment Playbook"
+  hosts: ubuntu
+  become: true
+  vars_files:
+    - nx_packages.vars
+	- nx_services.vars
+
+  tasks:
+    - name: "Installing Nginx Webserver"
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+
+    - name: "Restarting/Enabling nginx service"
+      service:
+        name: "{{ services }}"
+        state: restarted
+        enabled: true
+
+    - name: "Copying Website Contents"
+      copy:
+        src: ./website/
+        dest: /var/www/html/
+        owner: "{{ nginx_owner }}"
+        group: "{{ nginx_group }}"
+

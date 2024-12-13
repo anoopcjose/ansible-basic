@@ -1,0 +1,94 @@
+run system update to get update and security patch from Canonical as Ubuntu OS vendor.
+apt update -y
+
+Install Nginx Web Server
+apt install nginx -y
+
+Build NGINX Extras
+apt install nginx-extras -y
+
+root@drupal-ubuntu:~# nginx -V
+nginx version: nginx/1.18.0 (Ubuntu)
+built with OpenSSL 3.0.2 15 Mar 2022
+TLS SNI support enabled
+
+Install and Configure MariaDB 10.5 Database Server
+install software dependencies and mariadb signing key
+install MariaDB 10.5 database server
+
+apt install software-properties-common
+
+apt-key adv --fetch-keys 'https://mariadb.org/mariadb_release_signing_key.asc' 
+
+add-apt-repository 'deb [arch=amd64,arm64,ppc64el] https://mirror.rackspace.com/mariadb/repo/10.5/ubuntu focal main' -y
+ 
+apt update -y
+
+wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb
+sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb
+
+apt install mariadb-server -y
+
+root@drupal-ubuntu:~# systemctl restart mysql.service
+root@drupal-ubuntu:~# systemctl enable mysql.service
+root@drupal-ubuntu:~# systemctl enable nginx
+Synchronizing state of nginx.service with SysV service script with /lib/systemd/systemd-sysv-install.
+Executing: /lib/systemd/systemd-sysv-install enable nginx
+root@drupal-ubuntu:~# systemctl restart nginx
+root@drupal-ubuntu:~#
+
+Securing Your MariaDB Installation
+# mysql_secure_installation
+
+Change the root password? [Y/n] Y
+New password:
+Re-enter new password:
+Password updated successfully!
+Reloading privilege tables..
+ ... Success!
+
+Remove anonymous users? [Y/n] Y
+ ... Success!
+
+Disallow root login remotely? [Y/n] Y
+ ... Success!
+
+Remove test database and access to it? [Y/n] Y
+ - Dropping test database...
+ ... Success!
+ - Removing privileges on test database...
+ ... Success!
+
+Reload privilege tables now? [Y/n] Y
+ ... Success!
+
+Verifying Your MariaDB Version
+# mysql -V
+mysql  Ver 15.1 Distrib 10.6.11-MariaDB, for debian-linux-gnu (x86_64) using  EditLine wrapper
+
+
+Build PHP 8.0 with FastCGI Process Manager (FPM)
+
+apt install python3-software-properties -y
+
+apt install software-properties-common -y
+
+adding the Ondřej PPA repository to your Ubuntu machine using the following command.
+LC_ALL=C.UTF-8 add-apt-repository ppa:ondrej/php
+
+apt update -y
+
+apt install php8.0 php-apcu php8.0-common php8.0-mysql php8.0-xmlrpc php8.0-curl php8.0-gd php8.0-cgi php8.0-cli php8.0-fpm php-pear php8.0-dev php8.0-imap php8.0-mbstring php8.0-xml php8.0-tidy php8.0-sqlite3 php8.0-xsl php8.0-gmp php8.0-zip php8.0-soap php-redis memcached php-memcache php8.0-opcache -y
+
+root@drupal-ubuntu:~# php -v
+PHP 8.1.13 (cli) (built: Nov 26 2022 14:07:55) (NTS)
+Copyright (c) The PHP Group
+Zend Engine v4.1.13, Copyright (c) Zend Technologies
+    with Zend OPcache v8.1.13, Copyright (c), by Zend Technologies
+
+
+/etc/nginx/sites-available/default
+
+echo "<h1>Nginx is running fine on Ubuntu</h1>" | sudo tee /var/www/html/index.html
+
+
